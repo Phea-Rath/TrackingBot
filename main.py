@@ -101,7 +101,7 @@ def handle_track(message):
             sub_text = item.get('TrackEnName', '') # បង្ហាញអង់គ្លេសពីក្រោមតូចៗ
         
             response += f"{icon} **{date_str}\n"
-            response += f"┃  `**{kh_status}`\n" if kh_status else ""
+            response += f"┃  **{kh_status}\n" if kh_status else ""
             response += f"┃  `{sub_text}`\n" if sub_text else ""
             response += f"{connector}\n"
             
