@@ -1,95 +1,93 @@
+import os
+import threading
 import requests
 import telebot
 from flask import Flask
-# from config import API_TOKEN # Bot Token ពី BotFather
+
+# ១. ការកំណត់ Bot Token
 API_TOKEN = "8689939123:AAFMTOGsozwBnrtvp0Ow63M6RwCP-r1lkWA"
 bot = telebot.TeleBot(API_TOKEN)
-app = Flask('')
-from deep_translator import GoogleTranslator
 
+# ២. វចនានុក្រមបកប្រែ (Dictionary Mapping) ផ្អែកលើ JSON របស់អ្នក
+TRANS_DICT = {
+    "Unloaded": "អីវ៉ាន់មកដល់ឃ្លាំង និងបានរើចេញពីកុងតឺន័រហើយ",
+    "Arrival Desitination port": "មកដល់កំពង់ផែគោលដៅ (បានដល់ព្រំដែន ត្រៀមដល់ឃ្លាំង)",
+    "on the way ,China": "កំពុងដឹកជញ្ជូនក្នុងប្រទេសចិន (រង់ចាំការឆ្លងកាត់ព្រំដែន)",
+    "Customs released ,China": "ទំនិញត្រូវបានបញ្ចេញពីគយ (ចិន)",
+    "Customs declaration in progress": "កំពុងស្ថិតក្នុងដំណាក់កាលរៀបចំឯកសារគយ",
+    "The container finish": "ការរៀបចំវេចខ្ចប់ចូលកុងតឺន័របានរួចរាល់",
+    "Waybill has been processed   China": "វិក្កយបត្រត្រូវបានបញ្ចូលក្នុងប្រព័ន្ធ និងត្រៀមចេញដំណើរ",
+    "China": "ប្រទេសចិន",
+    "": "មិនមានបញ្ជាក់"
+}
+
+def get_khmer(text):
+    if not text: return "មិនមានទិន្នន័យ"
+    # សម្អាត space និងទាញយកពាក្យបកប្រែ បើមិនមានក្នុង list ទេ ឱ្យបង្ហាញអក្សរដើម
+    return TRANS_DICT.get(text.strip(), text)
+
+# ៣. Flask App សម្រាប់ Render
+app = Flask('')
 @app.route('/')
-def home():
-    return "Bot is running!"
+def home(): return "Bot is running!"
 
 def run_flask():
-    # Render ផ្ដល់ Port ឱ្យតាមរយៈ Environment Variable
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
 
-# ... កូដ Bot របស់អ្នក ...
-
-
-def translate_to_khmer(text):
-    try:
-        # បកប្រែពីចិន (zh-CN) ឬអង់គ្លេស (en) ទៅខ្មែរ (km)
-        # ប្រើ source='auto' ដើម្បីឱ្យវាស្គាល់ភាសាដោយស្វ័យប្រវត្តិ
-        translated = GoogleTranslator(source='auto', target='km').translate(text)
-        return translated
-    except Exception as e:
-        print(f"Translation Error: {e}")
-        return text
-
-# ប្រើក្នុង Bot របស់អ្នក
-# status_kh = translate_to_khmer(latest_track['TrackName'])
-
-# មុខងារសម្រាប់ទាញយកទិន្នន័យពី API
-def get_tracking_info(tracking_number):
+# ៤. មុខងារទាញយកទិន្នន័យទាំងអស់ (List of Data)
+def get_all_tracking(track_number):
     url = 'https://ycserver.zq-zn.com/api/Track/QueryWayBillTrackbyExternal'
-    
-    # Payload របស់អ្នក
     data = {
         'Token': 'CbiGueAfei8B%2BBlh/7Mwcoa/0OFvoDPD2nxApVDZHZv87840gcNtAGUgeffQHXlUH23pQSgdtir4miZpe2JsObqXrR8mZyp5htArz1/fWp2ca/tw0OIlt%2BYNnCrLNrzZL%2BnHjte9dL/LVzj1zXSxsUoNMvZOu5BZliX7s26/GwBDbWWOXSfHW6tKtw1bgTf%2B6S%2BVyoQRc52Q7t6yeIgbSf/aEOTNPCg1PbXJzjJH1D9z2w1TS0W9ylLuYeuOUeZAdqFAQFR3ouzm13P1VqGUlN9gQcsCC5VQNEaoxxmfASk=',
-        'TrackKeywords': tracking_number,
+        'TrackKeywords': track_number,
     }
-
     try:
-        response = requests.post(url, json=data)
-        if response.status_code == 200:
-            result = response.json()
-            if result.get('data') and len(result['data']) > 0:
-                return result['data'][0] # យកទិន្នន័យចុងក្រោយគេ
-        return None
-    except Exception as e:
-        print(f"Error: {e}")
-        return None
+        res = requests.post(url, json=data, timeout=10)
+        if res.status_code == 200:
+            return res.json().get('data', [])
+        return []
+    except: return []
 
-# នៅពេលអ្នកប្រើផ្ញើពាក្យ /start
+# ៥. ការបង្ហាញលទ្ធផលជា Timeline
 @bot.message_handler(commands=['start'])
-def send_welcome(message):
-    bot.reply_to(message, "សួស្តី! សូមផ្ញើ **លេខកូដតាមដាន (Tracking Number)** មកកាន់ខ្ញុំ ដើម្បីពិនិត្យទីតាំងអីវ៉ាន់។")
+def start(message):
+    bot.reply_to(message, "សូមផ្ញើលេខ Tracking ដើម្បីមើលព័ត៌មានលម្អិត។")
 
-# នៅពេលអ្នកប្រើផ្ញើលេខ Tracking (អត្ថបទធម្មតា)
-@bot.message_handler(func=lambda message: True)
-def handle_message(message):
+@bot.message_handler(func=lambda m: True)
+def handle_track(message):
     track_code = message.text.strip()
-    bot.send_message(message.chat.id, "🔎 កំពុងស្វែងរកទិន្នន័យ...")
+    msg_wait = bot.send_message(message.chat.id, "🔎 កំពុងស្វែងរកទិន្នន័យ...")
     
-    latest_track = get_tracking_info(track_code)
+    data_list = get_all_tracking(track_code)
     
-    if latest_track:
-        location = latest_track['Location'] if latest_track['Location'] else "មិនមានបញ្ជាក់"
+    if data_list:
+        # ព័ត៌មានក្បាលលើ (Header)
+        header = data_list[0]
+        response = f"📋 **លេខកូដ:** `{header['TrackCode']}`\n"
+        response += f"📦 **សញ្ញាសម្គាល់:** {header['Marks']}\n"
+        response += f"🚚 **លេខទូ:** {header['InsideNO']}\n"
+        response += f"--------------------------\n\n"
         
-        khmer_message = (
-            f"📦 **ព័ត៌មានការដឹកជញ្ជូន**\n"
-            f"--------------------------\n"
-            f"🔢 លេខកូដ: `{latest_track['TrackCode']}`\n"
-            f"📍 ទីតាំង: {translate_to_khmer(location)}\n"
-            f"ℹ️ ស្ថានភាព: {translate_to_khmer(latest_track['TrackEnName'])}\n"
-            f"🇨🇳 (ចិន): {translate_to_khmer(latest_track['TrackName'])}\n"
-            f"⏰ កាលបរិច្ឆេទ: {translate_to_khmer(latest_track['CreateDate'])}\n"
-            f"--------------------------\n"
-            f"📢 ស្ថានភាពចុងក្រោយ: អីវ៉ាន់កំពុងស្ថិតក្នុងដំណាក់កាល {translate_to_khmer(latest_track['TrackEnName'])}"
-        )
-        bot.send_message(message.chat.id, khmer_message, parse_mode="Markdown")
+        # បង្កើត Timeline
+        for i, item in enumerate(data_list):
+            icon = "🟢" if i == 0 else "⚪️" # ចំណុចបៃតងសម្រាប់ស្ថានភាពចុងក្រោយ
+            connector = "┃\n" if i < len(data_list) - 1 else ""
+            
+            date_str = item['CreateDate'].split()[0] # យកតែថ្ងៃខែឆ្នាំ
+            status_kh = get_khmer(item['TrackEnName'])
+            
+            response += f"{icon} **{date_str}**\n"
+            response += f"┗ {status_kh}\n"
+            response += f"{connector}"
+            
+        bot.edit_message_text(response, message.chat.id, msg_wait.message_id, parse_mode="Markdown")
     else:
-        bot.send_message(message.chat.id, "❌ សុំទោស! រកមិនឃើញទិន្នន័យសម្រាប់លេខកូដនេះទេ។")
+        bot.edit_message_text("❌ រកមិនឃើញទិន្នន័យទេ។", message.chat.id, msg_wait.message_id)
 
-# បញ្ជាឱ្យ Bot ដំណើរការជាប់រហូត
+# ៦. ដំណើរការ
 if __name__ == "__main__":
-    # បើក Flask ក្នុង Thread ផ្សេងមួយទៀត
-    threading.Thread(target=run_flask).start()
-    
-    # ចាប់ផ្ដើម Bot
-    print("Bot is starting...")
+    threading.Thread(target=run_flask, daemon=True).start()
     bot.remove_webhook()
+    print("Bot is online...")
     bot.infinity_polling()
