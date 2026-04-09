@@ -1,7 +1,7 @@
 import requests
 import telebot
 # from config import API_TOKEN # Bot Token ពី BotFather
-API_TOKEN = "8324321383:AAFB4jzi-c3gf0wJBstw1N2KERsiRvqdyqA"
+API_TOKEN = "8689939123:AAFMTOGsozwBnrtvp0Ow63M6RwCP-r1lkWA"
 bot = telebot.TeleBot(API_TOKEN)
 
 from deep_translator import GoogleTranslator
