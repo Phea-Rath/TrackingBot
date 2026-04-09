@@ -1,9 +1,10 @@
 import requests
 import telebot
+from flask import Flask
 # from config import API_TOKEN # Bot Token ពី BotFather
 API_TOKEN = "8689939123:AAFMTOGsozwBnrtvp0Ow63M6RwCP-r1lkWA"
 bot = telebot.TeleBot(API_TOKEN)
-
+app = Flask('')
 from deep_translator import GoogleTranslator
 
 def translate_to_khmer(text):
