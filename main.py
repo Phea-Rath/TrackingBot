@@ -7,6 +7,18 @@ bot = telebot.TeleBot(API_TOKEN)
 app = Flask('')
 from deep_translator import GoogleTranslator
 
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+def run_flask():
+    # Render ផ្ដល់ Port ឱ្យតាមរយៈ Environment Variable
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
+
+# ... កូដ Bot របស់អ្នក ...
+
+
 def translate_to_khmer(text):
     try:
         # បកប្រែពីចិន (zh-CN) ឬអង់គ្លេស (en) ទៅខ្មែរ (km)
@@ -73,5 +85,11 @@ def handle_message(message):
         bot.send_message(message.chat.id, "❌ សុំទោស! រកមិនឃើញទិន្នន័យសម្រាប់លេខកូដនេះទេ។")
 
 # បញ្ជាឱ្យ Bot ដំណើរការជាប់រហូត
-print("Bot កំពុងដំណើរការ...")
-bot.infinity_polling()
+if __name__ == "__main__":
+    # បើក Flask ក្នុង Thread ផ្សេងមួយទៀត
+    threading.Thread(target=run_flask).start()
+    
+    # ចាប់ផ្ដើម Bot
+    print("Bot is starting...")
+    bot.remove_webhook()
+    bot.infinity_polling()
