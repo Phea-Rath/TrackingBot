@@ -3,49 +3,74 @@ import threading
 import requests
 import telebot
 from flask import Flask
+from deep_translator import GoogleTranslator
 
 # ១. ការកំណត់ Bot Token
 API_TOKEN = "8689939123:AAFMTOGsozwBnrtvp0Ow63M6RwCP-r1lkWA"
 bot = telebot.TeleBot(API_TOKEN)
 
-# ២. វចនានុក្រមបកប្រែ (Dictionary Mapping) ផ្អែកលើ JSON របស់អ្នក
+# ២. វចនានុក្រមបកប្រែយោងតាមរូបភាព (Technical Logistics Dictionary)
+# យើងដកលេខថ្ងៃខែចេញ ដើម្បីឱ្យវា Match ជាមួយស្ថានភាពទូទៅបានគ្រប់ពេល
 TRANS_DICT = {
-    # --- ភាសាចិន (ដកលេខ និងថ្ងៃខែចេញ) ---
+    # ស្ថានភាពចុងក្រោយ (Final Status)
     "到达仓库已拆柜": "មកដល់ឃ្លាំងហើយ និងបានរើចេញពីកុងតឺន័ររួចរាល់",
-    "到达目的港口 已抵达边境，预计今明晚到仓": "មកដល់កំពង់ផែគោលដៅ (ដល់ព្រំដែនហើយ ត្រៀមដល់ឃ្លាំងក្នុងពេលឆាប់ៗ)",
-    "运输途中请稍等 更新：预计": "កំពុងដឹកជញ្ជូន (មានការអាប់ដេតថ្មី)",
-    "运输途中请稍等 预计": "កំពុងដឹកជញ្ជូន (រង់ចាំការមកដល់)",
-    "报关已放行 更新：预计": "គយបានបញ្ចេញទំនិញ (មានការអាប់ដេតថ្មី)",
-    "报关已放行": "គយបានបញ្ចេញទំនិញរួចរាល់",
-    "报关已放行 广州转关放行": "គយបានបញ្ចេញទំនិញរួចរាល់ (ក្វាងចូវ)",
-    "报关中": "កំពុងស្ថិតក្នុងដំណាក់កាលរៀបចំឯកសារគយ",
-    "装柜完成": "ការវេចខ្ចប់ និងរៀបចំដាក់ចូលទូកុងតឺន័របានរួចរាល់",
-    "运单已入库准备发运": "វិក្កយបត្រត្រូវបានបញ្ចូលក្នុងប្រព័ន្ធ និងត្រៀមចេញដំណើរ",
-
-    # --- ភាសាអង់គ្លេស ---
-    "Unloaded": "រើចេញពីទូ (Unloaded)",
+    "Unloaded": "ទំនិញត្រូវបានទម្លាក់ពីទូ (Unloaded)",
+    
+    # ស្ថានភាពកំពង់ផែ និងព្រំដែន
+    "到达目的港口 已抵达边境，预计今明晚到仓": "មកដល់កំពង់ផែគោលដៅ (បានមកដល់ព្រំដែនហើយ ត្រៀមដល់ឃ្លាំងនៅយប់នេះ ឬស្អែក)",
+    "到达目的港口": "មកដល់កំពង់ផែគោលដៅ",
     "Arrival Desitination port": "មកដល់កំពង់ផែគោលដៅ",
+    
+    # ស្ថានភាពដឹកជញ្ជូន
+    "运输途中请稍等": "សូមរង់ចាំ ក្នុងអំឡុងពេលដឹកជញ្ជូន",
     "on the way": "កំពុងស្ថិតនៅលើផ្លូវដឹកជញ្ជូន",
-    "Customs released": "គយបានបញ្ចេញទំនិញរួចរាល់",
-    "Customs declaration in progress": "កំពុងរៀបចំឯកសារគយ",
-    "The container finish": "ការវេចខ្ចប់ក្នុងទូបានបញ្ចប់",
-    "Waybill has been processed": "វិក្កយបត្រត្រូវបានរៀបចំរួចរាល់"
+    "预计": "រំពឹងថានឹង",
+    "过境": "ឆ្លងកាត់ព្រំដែន",
+    "到仓": "មកដល់ឃ្លាំង",
+    "到港": "មកដល់កំពង់ផែ",
+    
+    # ស្ថានភាពគយ
+    "报关已放行": "សេចក្តីប្រកាសពន្ធគយត្រូវបានបញ្ចេញផ្សាយ",
+    "Customs released": "សេចក្តីប្រកាសពន្ធគយត្រូវបានបញ្ចេញផ្សាយ",
+    "广州转关放行": "ក្វាងចូវត្រូវបានបញ្ចេញផ្សាយឡើងវិញ",
+    "报关中": "សេចក្តីប្រកាសគយ កំពុងដំណើរការ",
+    "Customs declaration in progress": "សេចក្តីប្រកាសគយ កំពុងដំណើរការ",
+    
+    # ស្ថានភាពដំបូង
+    "装柜完成": "ការវេចខ្ចប់ និងដាក់ចូលទូកុងតឺន័របានរួចរាល់",
+    "The container finish": "ការបញ្ចប់ក្នុងទូ",
+    "运单已入库准备发运": "វិក្កយបត្រត្រូវបានដាក់ចូលក្នុងឃ្លាំង និងត្រៀមសម្រាប់ការដឹកជញ្ជូន",
+    "Waybill has been processed": "វិក្កយបត្រត្រូវបានកែច្នៃ",
+    "China": "ប្រទេសចិន"
 }
 
 def get_khmer_status(item):
     cn_text = item.get('TrackName', '') or ""
     en_text = item.get('TrackEnName', '') or ""
     
-    # ស្វែងរកពាក្យបកប្រែដោយប្រើ Partial Matching
-    # ឆែកមើលគ្រប់ Key ក្នុង Dictionary ថាមាននៅក្នុងអត្ថបទ API ដែរឬទេ
+    # ជំហានទី ១: ឆែកក្នុង Dictionary ជាមុន (លទ្ធផលដូចក្នុងរូបភាពទី ១)
     for key in TRANS_DICT:
         if key in cn_text or key in en_text:
-            return TRANS_DICT[key]
+            # បើរកឃើញពាក្យគន្លឹះ ប្រើពាក្យក្នុង Dictionary
+            # យើងអាចប្រើ Google Translator បន្ថែមដើម្បីបកប្រែផ្នែកដែលនៅសល់ (ដូចជាថ្ងៃខែក្នុងឃ្លា)
+            try:
+                source_text = cn_text if cn_text else en_text
+                translated = GoogleTranslator(source='auto', target='km').translate(source_text)
+                return translated
+            except:
+                return TRANS_DICT[key]
     
-    # ប្រសិនបើអត់មានក្នុង Dictionary ទេ ឱ្យបង្ហាញអក្សរចិនដើម
+    # ជំហានទី ២: បើគ្មានក្នុង Dictionary ទេ ប្រើ Translator ទាំងស្រុង
+    try:
+        source_text = cn_text if cn_text else en_text
+        if source_text:
+            return GoogleTranslator(source='auto', target='km').translate(source_text)
+    except:
+        pass
+        
     return cn_text if cn_text else en_text
-    
-# ៣. Flask App សម្រាប់ Render
+
+# ៣. Flask App
 app = Flask('')
 @app.route('/')
 def home(): return "Bot is running!"
@@ -54,7 +79,7 @@ def run_flask():
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
 
-# ៤. មុខងារទាញយកទិន្នន័យទាំងអស់ (List of Data)
+# ៤. មុខងារទាញយកទិន្នន័យ
 def get_all_tracking(track_number):
     url = 'https://ycserver.zq-zn.com/api/Track/QueryWayBillTrackbyExternal'
     data = {
@@ -68,7 +93,7 @@ def get_all_tracking(track_number):
         return []
     except: return []
 
-# ៥. ការបង្ហាញលទ្ធផលជា Timeline
+# ៥. ការបង្ហាញលទ្ធផល
 @bot.message_handler(commands=['start'])
 def start(message):
     bot.reply_to(message, "សូមផ្ញើលេខ Tracking ដើម្បីមើលព័ត៌មានលម្អិត។")
@@ -76,40 +101,37 @@ def start(message):
 @bot.message_handler(func=lambda m: True)
 def handle_track(message):
     track_code = message.text.strip()
-    msg_wait = bot.send_message(message.chat.id, "🔎 កំពុងស្វែងរកទិន្នន័យ...")
+    msg_wait = bot.send_message(message.chat.id, "🔎 កំពុងទាញយកទិន្នន័យ...")
     
     data_list = get_all_tracking(track_code)
     
     if data_list:
-        # ព័ត៌មានក្បាលលើ (Header)
-        header = data_list[0]
-        response = f"📋 **លេខកូដ:** `{header['TrackCode']}`\n"
-        response += f"📦 **សញ្ញាសម្គាល់:** {header['Marks']}\n"
-        response += f"🚚 **លេខទូ:** {header['InsideNO']}\n"
+        h = data_list[0]
+        # រៀបចំ Header តាមរូបភាព
+        response = f"📋 **ម៉ាកុស:** {h.get('Marks', '---')}\n"
+        response += f"🔢 **លេខវិក្កយបត្រ:** `{h.get('TrackCode', '---')}`\n"
+        response += f"🚛 **លេខទូកុងតឺន័រ:** {h.get('InsideNO', '---')}\n"
         response += f"--------------------------\n\n"
         
-        # បង្កើត Timeline
         for i, item in enumerate(data_list):
             icon = "🟢" if i == 0 else "⚪️"
-            connector = "┃" if i < len(data_list) - 1 else ""
+            line = "┃" if i < len(data_list) - 1 else " "
             
             date_str = item.get('CreateDate', '').split()[0]
             kh_status = get_khmer_status(item)
-            en_sub = item.get('TrackEnName', '') # ទុកសម្រាប់បង្ហាញជាអក្សរតូចពីក្រោម
-            # បង្ហាញក្នុង Telegram
-            response += f"{icon} **{date_only}** {kh_status}\n"
-            response += f"┃  **{kh_status}**\n" if kh_status else ""
-            if en_sub:
-            response += f"┃  `{en_sub}`\n"
-            response += f"{connector}\n"
+            en_sub = item.get('TrackEnName', '') 
+
+            response += f"{icon} **{date_str}**\n"
+            response += f"┃  **{kh_status}**\n"
+            if en_sub: response += f"┃  `{en_sub}`\n"
+            response += f"{line}\n"
             
         bot.edit_message_text(response, message.chat.id, msg_wait.message_id, parse_mode="Markdown")
     else:
         bot.edit_message_text("❌ រកមិនឃើញទិន្នន័យទេ។", message.chat.id, msg_wait.message_id)
 
-# ៦. ដំណើរការ
 if __name__ == "__main__":
     threading.Thread(target=run_flask, daemon=True).start()
     bot.remove_webhook()
-    print("Bot is online...")
+    print("Bot is online with Hybrid Translation...")
     bot.infinity_polling()
