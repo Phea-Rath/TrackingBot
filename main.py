@@ -10,44 +10,41 @@ bot = telebot.TeleBot(API_TOKEN)
 
 # ២. វចនានុក្រមបកប្រែ (Dictionary Mapping) ផ្អែកលើ JSON របស់អ្នក
 TRANS_DICT = {
-    # --- ស្ថានភាពជាភាសាចិន ---
+    # --- ភាសាចិន (ដកលេខ និងថ្ងៃខែចេញ) ---
     "到达仓库已拆柜": "មកដល់ឃ្លាំងហើយ និងបានរើចេញពីកុងតឺន័ររួចរាល់",
-    "到达目的港口 已抵达边境，预计今明晚到仓": "មកដល់កំពង់ផែគោលដៅ (បានដល់ព្រំដែនហើយ ត្រៀមដល់ឃ្លាំងក្នុងពេលឆាប់ៗ)",
-    "运输途中请稍等 更新：预计4-10到港,China": "កំពុងដឹកជញ្ជូន រង់ចាំការអាប់ដេត៖ រំពឹងថានឹងដល់កំពង់ផែនៅថ្ងៃទី ៤-១០, ប្រទេសចិន",
-    "运输途中请稍等 预计4-10到港,China": "កំពុងដឹកជញ្ជូន រំពឹងថានឹងដល់កំពង់ផែនៅថ្ងៃទី ៤-១០, ប្រទេសចិន",
-    "运输途中请稍等 预计4-3过境，预计4-4到仓,China": "កំពុងដឹកជញ្ជូន រំពឹងថានឹងឆ្លងកាត់ព្រំដែនថ្ងៃ ៤-៣ និងដល់ឃ្លាំងថ្ងៃ ៤-៤, ប្រទេសចិន",
-    "报关已放行 更新：预计4-3开船，航期7天左右,China": "គយបានបញ្ចេញទំនិញ អាប់ដេត៖ រំពឹងថានឹងចេញកប៉ាល់ថ្ងៃ ៤-៣ រយៈពេលដឹកជញ្ជូនប្រហែល ៧ ថ្ងៃ, ប្រទេសចិន",
-    "报关已放行 更新：预计4-3开船，航期7天,China": "គយបានបញ្ចេញទំនិញ អាប់ដេត៖ រំពឹងថានឹងចេញកប៉ាល់ថ្ងៃ ៤-៣ រយៈពេលដឹកជញ្ជូន ៧ ថ្ងៃ, ប្រទេសចិន",
-    "报关已放行 ,China": "គយបានបញ្ចេញទំនិញរួចរាល់, ប្រទេសចិន",
-    "报关已放行 广州转关放行,China": "គយបានបញ្ចេញទំនិញរួចរាល់ (ក្វាងចូវ), ប្រទេសចិន",
+    "到达目的港口 已抵达边境，预计今明晚到仓": "មកដល់កំពង់ផែគោលដៅ (ដល់ព្រំដែនហើយ ត្រៀមដល់ឃ្លាំងក្នុងពេលឆាប់ៗ)",
+    "运输途中请稍等 更新：预计": "កំពុងដឹកជញ្ជូន (មានការអាប់ដេតថ្មី)",
+    "运输途中请稍等 预计": "កំពុងដឹកជញ្ជូន (រង់ចាំការមកដល់)",
+    "报关已放行 更新：预计": "គយបានបញ្ចេញទំនិញ (មានការអាប់ដេតថ្មី)",
+    "报关已放行": "គយបានបញ្ចេញទំនិញរួចរាល់",
+    "报关已放行 广州转关放行": "គយបានបញ្ចេញទំនិញរួចរាល់ (ក្វាងចូវ)",
     "报关中": "កំពុងស្ថិតក្នុងដំណាក់កាលរៀបចំឯកសារគយ",
     "装柜完成": "ការវេចខ្ចប់ និងរៀបចំដាក់ចូលទូកុងតឺន័របានរួចរាល់",
-    "运单已入库准备发运,China": "វិក្កយបត្រត្រូវបានបញ្ចូលក្នុងប្រព័ន្ធ និងត្រៀមចេញដំណើរ, ប្រទេសចិន",
+    "运单已入库准备发运": "វិក្កយបត្រត្រូវបានបញ្ចូលក្នុងប្រព័ន្ធ និងត្រៀមចេញដំណើរ",
 
-    # --- ស្ថានភាពជាភាសាអង់គ្លេស ---
+    # --- ភាសាអង់គ្លេស ---
     "Unloaded": "រើចេញពីទូ (Unloaded)",
     "Arrival Desitination port": "មកដល់កំពង់ផែគោលដៅ",
-    "on the way ,China": "កំពុងស្ថិតនៅលើផ្លូវដឹកជញ្ជូន, ប្រទេសចិន",
-    "Customs released ,China": "គយបានបញ្ចេញទំនិញរួចរាល់",
+    "on the way": "កំពុងស្ថិតនៅលើផ្លូវដឹកជញ្ជូន",
+    "Customs released": "គយបានបញ្ចេញទំនិញរួចរាល់",
     "Customs declaration in progress": "កំពុងរៀបចំឯកសារគយ",
     "The container finish": "ការវេចខ្ចប់ក្នុងទូបានបញ្ចប់",
-    "Waybill has been processed China": "វិក្កយបត្រត្រូវបានរៀបចំរួចរាល់, ប្រទេសចិន",
-    "Waybill has been processed   China": "វិក្កយបត្រត្រូវបានរៀបចំរួចរាល់, ប្រទេសចិន"
+    "Waybill has been processed": "វិក្កយបត្រត្រូវបានរៀបចំរួចរាល់"
 }
 
 def get_khmer_status(item):
-    cn_text = item.get('TrackName', '').strip()
-    en_text = item.get('TrackEnName', '').strip()
-
-    # ជាដំបូងឆែកមើលអក្សរចិន បើអត់មានទើបឆែកអក្សរអង់គ្លេស
-    khmer_status = TRANS_DICT.get(cn_text) or TRANS_DICT.get(en_text)
+    cn_text = item.get('TrackName', '') or ""
+    en_text = item.get('TrackEnName', '') or ""
     
-    # ប្រសិនបើអត់មានក្នុង Dictionary ទាំងពីរទេ ឱ្យបង្ហាញអក្សរដើមដែលមាន
-    if not khmer_status:
-        khmer_status = cn_text if cn_text else en_text
-        
-    return khmer_status
-
+    # ស្វែងរកពាក្យបកប្រែដោយប្រើ Partial Matching
+    # ឆែកមើលគ្រប់ Key ក្នុង Dictionary ថាមាននៅក្នុងអត្ថបទ API ដែរឬទេ
+    for key in TRANS_DICT:
+        if key in cn_text or key in en_text:
+            return TRANS_DICT[key]
+    
+    # ប្រសិនបើអត់មានក្នុង Dictionary ទេ ឱ្យបង្ហាញអក្សរចិនដើម
+    return cn_text if cn_text else en_text
+    
 # ៣. Flask App សម្រាប់ Render
 app = Flask('')
 @app.route('/')
@@ -98,11 +95,12 @@ def handle_track(message):
             
             date_str = item.get('CreateDate', '').split()[0]
             kh_status = get_khmer_status(item)
-            sub_text = item.get('TrackEnName', '') # បង្ហាញអង់គ្លេសពីក្រោមតូចៗ
-        
-            response += f"{icon} **{date_str}**\n"
+            en_sub = item.get('TrackEnName', '') # ទុកសម្រាប់បង្ហាញជាអក្សរតូចពីក្រោម
+            # បង្ហាញក្នុង Telegram
+            response += f"{icon} **{date_only}** {kh_status}\n"
             response += f"┃  **{kh_status}**\n" if kh_status else ""
-            response += f"┃  `{sub_text}`\n" if sub_text else ""
+            if en_sub:
+            response += f"┃  `{en_sub}`\n"
             response += f"{connector}\n"
             
         bot.edit_message_text(response, message.chat.id, msg_wait.message_id, parse_mode="Markdown")
