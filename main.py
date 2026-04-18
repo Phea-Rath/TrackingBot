@@ -101,7 +101,7 @@ def start(message):
 @bot.message_handler(func=lambda m: True)
 def handle_track(message):
     track_code = message.text.strip()
-    msg_wait = bot.send_message(message.chat.id, "🔎 កំពុងទាញយកទិន្នន័យ...")
+    msg_wait = bot.send_message(message.chat.id, "🔎 កំពុងស្វែងរកទិន្នន័យ​និងបកប្រែជាភាសាខ្មែរ...")
     
     data_list = get_all_tracking(track_code)
     
