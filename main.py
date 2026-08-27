@@ -5,9 +5,11 @@ import html
 import requests
 import telebot
 from flask import Flask
-from googletrans import Translator
-
-translator = Translator()
+try:
+    from googletrans import Translator
+    translator = Translator()
+except Exception as e:
+    translator = None
 
 # ១. ការកំណត់ Bot Token
 API_TOKEN = "8689939123:AAFMTOGsozwBnrtvp0Ow63M6RwCP-r1lkWA"
@@ -55,20 +57,26 @@ def get_khmer_status(item):
     # ជំហានទី ១: ឆែកក្នុង Dictionary ជាមុន (លទ្ធផលដូចក្នុងរូបភាពទី ១)
     for key in TRANS_DICT:
         if key in cn_text or key in en_text:
-            try:
-                source_text = cn_text if cn_text else en_text
-                translated = translator.translate(source_text, dest='km').text
-                return translated
-            except:
-                return TRANS_DICT[key]
+            if translator:
+                try:
+                    source_text = cn_text if cn_text else en_text
+                    translated = translator.translate(source_text, dest='km').text
+                    if translated:
+                        return translated
+                except Exception:
+                    pass
+            return TRANS_DICT[key]
     
     # ជំហានទី ២: បើគ្មានក្នុង Dictionary ទេ ប្រើ Translator ទាំងស្រុង
-    try:
-        source_text = cn_text if cn_text else en_text
-        if source_text:
-            return translator.translate(source_text, dest='km').text
-    except:
-        pass
+    if translator:
+        try:
+            source_text = cn_text if cn_text else en_text
+            if source_text:
+                translated = translator.translate(source_text, dest='km').text
+                if translated:
+                    return translated
+        except Exception:
+            pass
         
     return cn_text if cn_text else en_text
 
