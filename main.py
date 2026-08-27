@@ -50,35 +50,50 @@ TRANS_DICT = {
     "China": "ប្រទេសចិន"
 }
 
+def translate_cloud(text, src='zh-CN', target='km'):
+    if not text:
+        return ""
+    # ១. សាកល្បងប្រើ Google Translator (សម្រាប់ Local)
+    if translator:
+        try:
+            res = translator.translate(text, dest=target).text
+            if res:
+                return res
+        except Exception:
+            pass
+
+    # ២. បើ Google ស្ទះ/Block លើ Render (Datacenter IP Block) ប្រើ MyMemory API
+    try:
+        url = 'https://api.mymemory.translated.net/get'
+        params = {'q': text, 'langpair': f'{src}|{target}'}
+        res = requests.get(url, params=params, timeout=5).json()
+        translated = res.get('responseData', {}).get('translatedText', '')
+        if translated and 'MYMEMORY' not in translated.upper() and 'INVALID' not in translated.upper():
+            return translated
+    except Exception:
+        pass
+
+    return ""
+
 def get_khmer_status(item):
     cn_text = item.get('TrackName', '') or ""
     en_text = item.get('TrackEnName', '') or ""
     
-    # ជំហានទី ១: ឆែកក្នុង Dictionary ជាមុន (លទ្ធផលដូចក្នុងរូបភាពទី ១)
+    # ជំហានទី ១: ឆែកក្នុង Dictionary ជាមុន (លទ្ធផលត្រឹមត្រូវតាមបច្ចេកទេស)
     for key in TRANS_DICT:
         if key in cn_text or key in en_text:
-            if translator:
-                try:
-                    source_text = cn_text if cn_text else en_text
-                    translated = translator.translate(source_text, dest='km').text
-                    if translated:
-                        return translated
-                except Exception:
-                    pass
             return TRANS_DICT[key]
     
-    # ជំហានទី ២: បើគ្មានក្នុង Dictionary ទេ ប្រើ Translator ទាំងស្រុង
-    if translator:
-        try:
-            source_text = cn_text if cn_text else en_text
-            if source_text:
-                translated = translator.translate(source_text, dest='km').text
-                if translated:
-                    return translated
-        except Exception:
-            pass
+    # ជំហានទី ២: បើគ្មានក្នុង Dictionary ទេ ប្រើ Online Translator (Google + MyMemory Cloud Fallback)
+    source_text = cn_text if cn_text else en_text
+    src_lang = 'zh-CN' if cn_text else 'en'
+    
+    if source_text:
+        translated = translate_cloud(source_text, src=src_lang, target='km')
+        if translated:
+            return translated
         
-    return cn_text if cn_text else en_text
+    return source_text
 
 # ៣. Flask App
 app = Flask('')
