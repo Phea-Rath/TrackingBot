@@ -1,9 +1,13 @@
 import os
+import time
 import threading
+import html
 import requests
 import telebot
 from flask import Flask
-from deep_translator import GoogleTranslator
+from googletrans import Translator
+
+translator = Translator()
 
 # ១. ការកំណត់ Bot Token
 API_TOKEN = "8689939123:AAFMTOGsozwBnrtvp0Ow63M6RwCP-r1lkWA"
@@ -51,11 +55,9 @@ def get_khmer_status(item):
     # ជំហានទី ១: ឆែកក្នុង Dictionary ជាមុន (លទ្ធផលដូចក្នុងរូបភាពទី ១)
     for key in TRANS_DICT:
         if key in cn_text or key in en_text:
-            # បើរកឃើញពាក្យគន្លឹះ ប្រើពាក្យក្នុង Dictionary
-            # យើងអាចប្រើ Google Translator បន្ថែមដើម្បីបកប្រែផ្នែកដែលនៅសល់ (ដូចជាថ្ងៃខែក្នុងឃ្លា)
             try:
                 source_text = cn_text if cn_text else en_text
-                translated = GoogleTranslator(source='auto', target='km').translate(source_text)
+                translated = translator.translate(source_text, dest='km').text
                 return translated
             except:
                 return TRANS_DICT[key]
@@ -64,7 +66,7 @@ def get_khmer_status(item):
     try:
         source_text = cn_text if cn_text else en_text
         if source_text:
-            return GoogleTranslator(source='auto', target='km').translate(source_text)
+            return translator.translate(source_text, dest='km').text
     except:
         pass
         
@@ -76,7 +78,7 @@ app = Flask('')
 def home(): return "Bot is running!"
 
 def run_flask():
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 5001))
     app.run(host='0.0.0.0', port=port)
 
 # ៤. មុខងារទាញយកទិន្នន័យ
@@ -93,45 +95,98 @@ def get_all_tracking(track_number):
         return []
     except: return []
 
-# ៥. ការបង្ហាញលទ្ធផល
+# ៥. មុខងារ Animated Loading
+def animate_loading(chat_id, message_id, stop_event):
+    frames = [
+        "⚡ <b>កំពុងស្វែងរកទិន្នន័យ​ និងបកប្រែជាភាសាខ្មែរ</b> <code>.</code>",
+        "⚡ <b>កំពុងស្វែងរកទិន្នន័យ​ និងបកប្រែជាភាសាខ្មែរ</b> <code>..</code>",
+        "⚡ <b>កំពុងស្វែងរកទិន្នន័យ​ និងបកប្រែជាភាសាខ្មែរ</b> <code>...</code>",
+        "⚡ <b>កំពុងស្វែងរកទិន្នន័យ​ និងបកប្រែជាភាសាខ្មែរ</b> <code>....</code>",
+    ]
+    idx = 0
+    while not stop_event.is_set():
+        time.sleep(0.6)
+        if stop_event.is_set():
+            break
+        idx = (idx + 1) % len(frames)
+        try:
+            bot.edit_message_text(frames[idx], chat_id, message_id, parse_mode="HTML")
+        except Exception:
+            pass
+
+# ៦. ការបង្ហាញលទ្ធផល
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.reply_to(message, "សូមផ្ញើលេខ Tracking ដើម្បីមើលព័ត៌មានលម្អិត។")
+    welcome_msg = (
+        "✨ <b>សូមស្វាគមន៍មកកាន់ Tracking Bot!</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "📦 សូមផ្ញើ <b>លេខ Tracking / វិក្កយបត្រ</b> របស់អ្នក ដើម្បីពិនិត្យមើលព័ត៌មានដឹកជញ្ជូនលម្អិត។"
+    )
+    bot.reply_to(message, welcome_msg, parse_mode="HTML")
 
 @bot.message_handler(func=lambda m: True)
 def handle_track(message):
     track_code = message.text.strip()
-    msg_wait = bot.send_message(message.chat.id, "🔎 កំពុងស្វែងរកទិន្នន័យ​និងបកប្រែជាភាសាខ្មែរ...")
+    msg_wait = bot.send_message(
+        message.chat.id, 
+        "⚡ <b>កំពុងស្វែងរកទិន្នន័យ​ និងបកប្រែជាភាសាខ្មែរ</b> <code>.</code>", 
+        parse_mode="HTML"
+    )
     
-    data_list = get_all_tracking(track_code)
-    
-    if data_list:
-        h = data_list[0]
-        # រៀបចំ Header តាមរូបភាព
-        response = f"📋 **ម៉ាកុស:** {h.get('Marks', '---')}\n"
-        response += f"🔢 **លេខវិក្កយបត្រ:** `{h.get('TrackCode', '---')}`\n"
-        response += f"🚛 **លេខទូកុងតឺន័រ:** {h.get('InsideNO', '---')}\n"
-        response += f"--------------------------\n\n"
-        
-        for i, item in enumerate(data_list):
-            icon = "🟢" if i == 0 else "⚪️"
-            line = "┃" if i < len(data_list) - 1 else " "
-            
-            date_str = item.get('CreateDate', '').split()[0]
-            kh_status = get_khmer_status(item)
-            en_sub = item.get('TrackEnName', '') 
+    stop_event = threading.Event()
+    anim_thread = threading.Thread(
+        target=animate_loading, 
+        args=(message.chat.id, msg_wait.message_id, stop_event), 
+        daemon=True
+    )
+    anim_thread.start()
 
-            response += f"{icon} **{date_str}**\n"
-            response += f"┃  **{kh_status}**\n"
-            if en_sub: response += f"┃  `{en_sub}`\n"
-            response += f"{line}\n"
+    try:
+        bot.send_chat_action(message.chat.id, 'typing')
+        data_list = get_all_tracking(track_code)
+        
+        if data_list:
+            h = data_list[0]
+            marks = html.escape(str(h.get('Marks', '---')))
+            code = html.escape(str(h.get('TrackCode', '---')))
+            inside_no = html.escape(str(h.get('InsideNO', '---')))
+
+            # Modern Card Header Layout
+            response = "📦 <b>ព័ត៌មានការដឹកជញ្ជូន (Tracking Info)</b>\n"
+            response += "━━━━━━━━━━━━━━━━━━━━━\n"
+            response += f"🏷️ <b>ម៉ាកុស:</b> <code>{marks}</code>\n"
+            response += f"🧾 <b>លេខវិក្កយបត្រ:</b> <code>{code}</code>\n"
+            response += f"🚛 <b>លេខទូកុងតឺន័រ:</b> <code>{inside_no}</code>\n"
+            response += "━━━━━━━━━━━━━━━━━━━━━\n\n"
+            response += "📍 <b>ដំណាក់កាលដឹកជញ្ជូន (Timeline):</b>\n\n"
             
-        bot.edit_message_text(response, message.chat.id, msg_wait.message_id, parse_mode="Markdown")
-    else:
-        bot.edit_message_text("❌ រកមិនឃើញទិន្នន័យទេ។", message.chat.id, msg_wait.message_id)
+            for i, item in enumerate(data_list):
+                status_icon = "🟢" if i == 0 else "▫️"
+                date_str = html.escape(str(item.get('CreateDate', '')).split()[0])
+                kh_status = html.escape(get_khmer_status(item))
+                en_sub = html.escape(str(item.get('TrackEnName', '') or ""))
+
+                response += f"{status_icon} <b>{date_str}</b>\n"
+                response += f" ┗ <b>{kh_status}</b>\n"
+                if en_sub:
+                    response += f" └ <i>{en_sub}</i>\n"
+                response += "\n"
+                
+            stop_event.set()
+            anim_thread.join(timeout=1.0)
+            bot.edit_message_text(response, message.chat.id, msg_wait.message_id, parse_mode="HTML")
+        else:
+            stop_event.set()
+            anim_thread.join(timeout=1.0)
+            bot.edit_message_text("❌ <b>រកមិនឃើញទិន្នន័យទេ។</b>", message.chat.id, msg_wait.message_id, parse_mode="HTML")
+    except Exception as e:
+        stop_event.set()
+        anim_thread.join(timeout=1.0)
+        bot.edit_message_text("⚠️ <b>មានបញ្ហាក្នុងការទាញយកទិន្នន័យ។</b>", message.chat.id, msg_wait.message_id, parse_mode="HTML")
 
 if __name__ == "__main__":
     threading.Thread(target=run_flask, daemon=True).start()
     bot.remove_webhook()
     print("Bot is online with Hybrid Translation...")
     bot.infinity_polling()
+
